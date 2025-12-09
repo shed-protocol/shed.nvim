@@ -37,7 +37,15 @@ function M.attach(bufnr)
 				local content = json.encode({ kind = 1, body = { op = op } })
 				transport.write(content, client)
 			end
-		end
+		end,
+	})
+
+	api.nvim_create_autocmd("BufUnload", {
+		pattern = "*",
+		callback = function()
+			client:kill("sigint")
+			return true -- deletes the autocmd after execution
+		end,
 	})
 end
 

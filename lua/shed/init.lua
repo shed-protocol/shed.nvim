@@ -1,8 +1,10 @@
 local M = {}
 
+local operation = require("operation")
 local transport = require("transport")
 
 local api = vim.api
+local json = vim.json
 
 function M.attach(bufnr)
 	local buf = ""
@@ -13,9 +15,8 @@ function M.attach(bufnr)
 			local msg
 			msg, buf = transport.read(buf)
 			if msg then
-				vim.schedule(function ()
-					vim.notify(msg)
-				end)
+				local op = json.decode(msg).body.op
+				vim.schedule(function () operation.apply(op) end)
 			end
 		end
 	})

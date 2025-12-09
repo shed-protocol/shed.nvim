@@ -13,6 +13,7 @@ function M.attach(bufnr)
 	local client = vim.system({ "shed-client", "localhost:9042" }, {
 		stdin = true,
 		stdout = function(_, data)
+			if not data then return end
 			buf = buf .. data
 			local msg
 			msg, buf = transport.read(buf)
@@ -28,10 +29,14 @@ function M.attach(bufnr)
 	})
 
 	api.nvim_buf_attach(bufnr, false, {
-		on_lines = function()
-			local json = '{"kind":1,"body":{"op":{"type":"deletion","pos":20,"len":0}}}'
+		on_lines = function(_, _, _, firstline, _, new_lastline, old_byte_size)
 			-- TODO: Fix race condition (skip only edits equal to last remote change?)
-			if not skip then transport.write(json, client) end
+			if skip then return end
+			local ops = operation.from(firstline, new_lastline, old_byte_size)
+			for _, op in ipairs(ops) do
+				local content = json.encode({ kind = 1, body = { op = op } })
+				transport.write(content, client)
+			end
 		end
 	})
 end

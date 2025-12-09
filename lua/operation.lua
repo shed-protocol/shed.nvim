@@ -5,6 +5,7 @@ local api = vim.api
 --- @param pos uinteger
 --- @return uinteger, uinteger
 local function index(pos)
+	if pos == 0 then return 0, 0 end
 	-- TODO: Fix race condition (buffer state param?)
 	local lineno = vim.fn.byte2line(pos + 1)
 	local start = vim.fn.line2byte(lineno)
@@ -14,6 +15,28 @@ local function index(pos)
 	local offset = pos - start + 1
 	local col = vim.fn.charidx(vim.fn.getline(lineno), offset)
 	return lineno - 1, col
+end
+
+local function unlines(lines)
+	if #lines == 0 then return "" end
+	return table.concat(lines, "\n") .. "\n"
+end
+
+---@param firstline integer
+---@param new_lastline integer
+---@param old_byte_size integer
+---@return table
+function M.from(firstline, new_lastline, old_byte_size)
+	local ops = {}
+	local start = vim.fn.line2byte(firstline + 1)
+	if old_byte_size > 0 then
+		table.insert(ops, { type = "deletion", pos = start, len = old_byte_size })
+	end
+	local text = unlines(api.nvim_buf_get_lines(0, firstline, new_lastline, true))
+	if text then
+		table.insert(ops, { type = "insertion", pos = start, text = text })
+	end
+	return ops
 end
 
 function M.apply(op)
